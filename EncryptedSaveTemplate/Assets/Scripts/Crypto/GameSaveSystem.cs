@@ -5,19 +5,18 @@ using UnityEngine;
 
 public static class GameSaveSystem
 {
-    private const string SaveFileName = "save.wrapped";
-    private const string BackupFileName = "save_backup.wrapped";
+    private const string SaveFileFormat = "save_slot{0}.wrapped";
+    private const string BackupFileFormat = "save_slot{0}_backup.wrapped";
 
-    // 저장
-    public static void SaveGame<T>(T data) where T : GameDataBase
+    public static void SaveGame<T>(T data, int slotIndex = 0) where T : GameDataBase
     {
-        string fullPath = Path.Combine(Application.persistentDataPath, SaveFileName);
-        string backupPath = Path.Combine(Application.persistentDataPath, BackupFileName);
+        string fullPath = GetSavePath(slotIndex);
+        string backupPath = GetBackupPath(slotIndex);
 
         if (File.Exists(fullPath))
         {
             File.Copy(fullPath, backupPath, overwrite: true);
-            Debug.Log("[Save] 기존 세이브 백업 완료");
+            Debug.Log($"[Save] 슬롯 {slotIndex} 백업 완료");
         }
 
         byte[] aesKey = AESKeyGenerator.GenerateKey();
@@ -33,37 +32,53 @@ public static class GameSaveSystem
         };
 
         File.WriteAllText(fullPath, JsonUtility.ToJson(blob));
-        Debug.Log($"[Save] 저장 완료: {fullPath}");
+        Debug.Log($"[Save] 슬롯 {slotIndex} 저장 완료: {fullPath}");
     }
 
-    public static bool TryLoadGame<T>(out T result) where T : GameDataBase
+    public static bool TryLoadGame<T>(out T result, int slotIndex = 0) where T : GameDataBase, new()
     {
         result = null;
 
-        string fullPath = Path.Combine(Application.persistentDataPath, SaveFileName);
-        string backupPath = Path.Combine(Application.persistentDataPath, BackupFileName);
+        string fullPath = GetSavePath(slotIndex);
+        string backupPath = GetBackupPath(slotIndex);
 
-        try
-        {
-            result = LoadFromPath<T>(fullPath);
-            return true;
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[Load] 메인 세이브 실패: {e.Message}");
+        bool mainExists = File.Exists(fullPath);
+        bool backupExists = File.Exists(backupPath);
 
+        if (mainExists)
+        {
             try
             {
-                result = LoadFromPath<T>(backupPath);
-                Debug.LogWarning("[Load] 백업 세이브로 복원 성공");
+                result = LoadFromPath<T>(fullPath);
                 return true;
             }
-            catch (Exception e2)
+            catch (Exception e)
             {
-                Debug.LogError($"[Load] 백업 세이브 복구 실패: {e2.Message}");
+                Debug.LogError($"[Load] 슬롯 {slotIndex} 메인 세이브 손상됨: {e.Message}");
+
+                if (backupExists)
+                {
+                    try
+                    {
+                        result = LoadFromPath<T>(backupPath);
+                        Debug.LogWarning($"[Load] 슬롯 {slotIndex} 백업 세이브로 복원됨");
+                        return true;
+                    }
+                    catch (Exception e2)
+                    {
+                        Debug.LogError($"[Load] 슬롯 {slotIndex} 백업 세이브도 손상됨: {e2.Message}");
+                        return false; 
+                    }
+                }
+
                 return false;
             }
         }
+
+        Debug.Log($"[Load] 슬롯 {slotIndex} 세이브 없음 → 새로 생성");
+        result = new T();
+        SaveGame(result, slotIndex);
+        return true;
     }
 
     private static T LoadFromPath<T>(string path) where T : GameDataBase
@@ -78,13 +93,29 @@ public static class GameSaveSystem
         return JsonUtility.FromJson<T>(decryptedJson);
     }
 
-    public static void DeleteSave()
+    public static void DeleteSave(int slotIndex)
     {
-        string path = Path.Combine(Application.persistentDataPath, SaveFileName);
+        string path = GetSavePath(slotIndex);
         if (File.Exists(path))
         {
             File.Delete(path);
         }
+
+        string backup = GetBackupPath(slotIndex);
+        if (File.Exists(backup))
+        {
+            File.Delete(backup);
+        }
+    }
+
+    private static string GetSavePath(int slotIndex)
+    {
+        return Path.Combine(Application.persistentDataPath, string.Format(SaveFileFormat, slotIndex));
+    }
+
+    private static string GetBackupPath(int slotIndex)
+    {
+        return Path.Combine(Application.persistentDataPath, string.Format(BackupFileFormat, slotIndex));
     }
 
     private static byte[] GenerateRandomIV()
@@ -93,5 +124,4 @@ public static class GameSaveSystem
         RandomNumberGenerator.Fill(iv);
         return iv;
     }
-
 }

@@ -21,9 +21,9 @@ public class DataSaveManager : SingletonMonobehaviour<DataSaveManager>
         return GameSaveSystem.TryLoadGame(out result);
     }
 
-    public void DeleteSaveFile()
+    public void DeleteSaveFile(int slotIndex)
     {
-        GameSaveSystem.DeleteSave();
+        GameSaveSystem.DeleteSave(slotIndex);
     }
 
 

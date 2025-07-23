@@ -9,6 +9,8 @@ public class GameDataManager : SingletonMonobehaviour<GameDataManager>
     protected override void Awake()
     {
         base.Awake();
+
+        DontDestroyOnLoad(gameObject);
     }
     public void TryLoadOrInitialize()
     {
