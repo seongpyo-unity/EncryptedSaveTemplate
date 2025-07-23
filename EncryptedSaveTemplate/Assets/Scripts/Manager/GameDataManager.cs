@@ -22,17 +22,6 @@ public class GameDataManager : SingletonMonobehaviour<GameDataManager>
         }
     }
 
-    public void Save()
-    {
-        if (CurrentData == null)
-        {
-            Debug.LogWarning("[GameDataManager] Current 데이터가 null입니다. 저장 생략.");
-            return;
-        }
-
-        DataSaveManager.Instance.Save(CurrentData);
-    }
-
     public void Overwrite(GameData newData)
     {
         CurrentData = newData;
