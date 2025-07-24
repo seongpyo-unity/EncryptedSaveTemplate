@@ -4,6 +4,9 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections;
 
+/// <summary>
+/// 게임 시작 시 저장 데이터를 불러오고 로딩 화면을 처리하는 부트 매니저 클래스
+/// </summary>
 public class BootManager : SingletonMonobehaviour<BootManager>
 {
     [SerializeField] private GameObject loadingSlider;
@@ -20,6 +23,9 @@ public class BootManager : SingletonMonobehaviour<BootManager>
         StartCoroutine(LoadGameRoutine());
     }
 
+    /// <summary>
+    /// 세이브 데이터를 불러오고 게임 씬으로 전환하는 로딩 루틴 코루틴 함수
+    /// </summary>
     private IEnumerator LoadGameRoutine()
     {
         loadingText.text = "Loading...";
@@ -27,7 +33,7 @@ public class BootManager : SingletonMonobehaviour<BootManager>
 
         yield return new WaitForSeconds(0.3f);
 
-        int slot = PlayerPrefs.GetInt("SelectedSlot", 0);
+        int slot = PlayerPrefs.GetInt(Settings.selectSlotHashKey, 0);
         bool success = GameSaveSystem.TryLoadGame<GameData>(out var loadedData, slot);
 
         if (!success)
@@ -40,7 +46,7 @@ public class BootManager : SingletonMonobehaviour<BootManager>
 
         GameDataManager.Instance.Overwrite(loadedData);
 
-        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync("GameScene");
+        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(Settings.GameScene);
         asyncLoad.allowSceneActivation = false;
 
         while (asyncLoad.progress < 0.9f)
